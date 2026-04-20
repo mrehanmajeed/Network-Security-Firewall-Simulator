@@ -31,7 +31,7 @@ pip install flask python-nmap
 
 ### 3. Run
 ```bash
-python app.py
+python A3_app.py
 ```
 Open `http://127.0.0.1:5000` in your browser.
 
