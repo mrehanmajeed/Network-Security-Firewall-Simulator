@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetScan Pro — Security Scanner & Firewall Visualizer</title>
+  <style>
+    :root {
+      --bg: #0a0e1a; --surface: #111827; --surface2: #1e2a3a;
+      --border: #2a3650; --accent: #00d4ff; --green: #00ff88;
+      --red: #ff4757; --yellow: #ffa502; --purple: #a855f7;
+      --text: #e2e8f0; --text-dim: #64748b; --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(90deg, #0a0e1a 0%, #111827 50%, #0d1a2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px; display: flex; align-items: center; gap: 14px;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo { font-size: 28px; }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--accent); }
+    header p  { font-size: 12px; color: var(--text-dim); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-left: auto; box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .grid-2,.grid-3 { grid-template-columns: 1fr; } }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; margin-bottom: 22px; }
+    .tab { flex: 1; padding: 9px; text-align: center; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-dim); transition: all 0.15s; }
+    .tab.active { background: var(--accent); color: #000; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+    .card-title { font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .card-title span { font-size: 16px; }
+
+    /* ── Form ── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 5px; }
+    input, select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text); padding: 9px 12px; font-size: 13px; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+
+    /* ── Buttons ── */
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; display: inline-flex; align-items: center; gap: 7px; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary  { background: var(--accent); color: #000; }
+    .btn-success  { background: var(--green);  color: #000; }
+    .btn-danger   { background: var(--red);    color: #fff; }
+    .btn-ghost    { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+
+    /* ── Stats row ── */
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; text-align: center; }
+    .stat-box .val { font-size: 24px; font-weight: 700; }
+    .stat-box .lbl { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .c-cyan   { color: var(--accent); }
+    .c-green  { color: var(--green); }
+    .c-red    { color: var(--red); }
+    .c-yellow { color: var(--yellow); }
+
+    /* ── Table ── */
+    .scan-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .scan-table th { background: var(--surface2); color: var(--text-dim); font-weight: 600; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+    .scan-table td { padding: 8px 12px; border-bottom: 1px solid #1a2234; }
+    .scan-table tr:hover td { background: #151f30; }
+    .table-wrap { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+
+    /* ── Badges ── */
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-open    { background: #00ff8822; color: var(--green); border: 1px solid #00ff8844; }
+    .badge-filtered{ background: #ffa50222; color: var(--yellow); border: 1px solid #ffa50244; }
+    .badge-allow   { background: #00ff8822; color: var(--green); }
+    .badge-deny    { background: #ff475722; color: var(--red); }
+    .badge-tcp    { background: #00d4ff22; color: var(--accent); }
+    .badge-udp    { background: #a855f722; color: var(--purple); }
+
+    /* ── Firewall UI ── */
+    .rule-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+    .rule-item {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px;
+    }
+    .rule-item .priority { background: var(--accent); color: #000; border-radius: 4px; padding: 1px 7px; font-weight: 700; font-size: 11px; }
+    .rule-item .rule-action-allow { color: var(--green); font-weight: 700; }
+    .rule-item .rule-action-deny  { color: var(--red);   font-weight: 700; }
+    .rule-item .del-btn { margin-left: auto; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+    .rule-item .del-btn:hover { background: var(--red); color: #fff; }
+
+    /* ── Traffic Diagram ── */
+    #trafficCanvas { width: 100%; display: block; }
+
+    /* ── Trace output ── */
+    .trace-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 4px; }
+    .trace-item.matched-allow { background: #00ff8812; border-left: 3px solid var(--green); }
+    .trace-item.matched-deny  { background: #ff475712; border-left: 3px solid var(--red); }
+    .trace-item.no-match      { background: var(--surface2); border-left: 3px solid var(--border); color: var(--text-dim); }
+
+    /* ── Loader ── */
+    .spinner { display: none; width: 18px; height: 18px; border: 2px solid transparent; border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Misc ── */
+    .empty-state { text-align: center; padding: 32px; color: var(--text-dim); font-size: 13px; }
+    .info-box { background: #0d1a2e; border: 1px solid #1a3050; border-left: 3px solid var(--accent); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text-dim); line-height: 1.5; margin-bottom: 14px; }
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .tag { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <span class="logo">🛡️</span>
+    <div>
+      <h1>NetScan Pro</h1>
+      <p>Network Security Scanner & Firewall Visualizer — Assignment 3</p>
+    </div>
+  </div>
+  <div class="status-dot"></div>
+</header>
+
+<div class="container">
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('scanner',this)">🔍 Port Scanner</div>
+    <div class="tab" onclick="showTab('firewall',this)">🔥 Firewall Rules</div>
+    <div class="tab" onclick="showTab('simulate',this)">🧪 Simulate Traffic</div>
+    <div class="tab" onclick="showTab('diagram',this)">📊 Network Diagram</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: PORT SCANNER                                           -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="tab-scanner" class="tab-pane active">
+
+    <div class="card">
+      <div class="card-title"><span>🎯</span> Scan Configuration</div>
+      <div class="info-box">
+        Enter a target IP address or hostname. The scanner will identify open ports, running services, and apply your current firewall rules to each result.
+        <div class="tag-row">
+          <span class="tag">python-nmap (primary)</span>
+          <span class="tag">Socket scan (fallback)</span>
+          <span class="tag">Firewall evaluation</span>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div>
+          <label>Target IP / Hostname</label>
+          <input id="scanTarget" type="text" placeholder="e.g. 192.168.1.1 or scanme.nmap.org" value="scanme.nmap.org" />
+        </div>
+        <div>
+          <label>Scan Type</label>
+          <select id="scanType">
+            <option value="tcp_connect">TCP Connect Scan (Full)</option>
+            <option value="tcp_syn">TCP SYN Scan (Stealth)</option>
+            <option value="udp">UDP Scan</option>
+            <option value="full">Service Version Detection</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:16px">
+        <div>
+          <label>Port Range</label>
+          <input id="portRange" type="text" placeholder="1-1024" value="1-1024" />
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:10px">
+          <button class="btn btn-primary" onclick="startScan(false)" id="scanBtn" style="flex:1">
+            <div class="spinner" id="scanSpinner"></div>
+            🔍 Scan (nmap)
+          </button>
+          <button class="btn btn-ghost" onclick="startScan(true)" style="flex:1">⚡ Socket Scan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-row" id="statsRow" style="display:none">
+      <div class="stat-box"><div class="val c-cyan" id="statTarget">—</div><div class="lbl">Target</div></div>
+      <div class="stat-box"><div class="val c-green" id="statOpen">0</div><div class="lbl">Open Ports</div></div>
+      <div class="stat-box"><div class="val c-red"   id="statDenied">0</div><div class="lbl">Firewall Blocked</div></div>
+      <div class="stat-box"><div class="val c-yellow" id="statTime">—</div><div class="lbl">Scan Time</div></div>
+    </div>
+
+    <!-- Results table -->
+    <div class="card">
+      <div class="card-title"><span>📋</span> Scan Results</div>
+      <div id="scanResultsWrap">
+        <div class="empty-state">🔍 Configure scan parameters above and click Scan to start.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: FIREWALL RULES                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="tab-firewall" class="tab-pane">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-title"><span>➕</span> Add Firewall Rule</div>
+          <div style="margin-bottom:10px">
+            <label>Action</label>
+            <select id="rAction">
+              <option value="DENY">DENY (Block)</option>
+              <option value="ALLOW">ALLOW (Permit)</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin-bottom:10px">
+            <div>
+              <label>Source IP (or * for any)</label>
+              <input id="rSrcIp" type="text" placeholder="* or 192.168.1.100" value="*" />
+            </div>
+            <div>
+              <label>Destination Port (or *)</label>
+              <input id="rDstPort" type="text" placeholder="* or 80 or 443" value="*" />
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:10px">
+            <div>
+              <label>Protocol</label>
+              <select id="rProto">
+                <option value="TCP">TCP</option>
+                <option value="UDP">UDP</option>
+                <option value="*">Any</option>
+              </select>
+            </div>
+            <div>
+              <label>Priority (lower = higher priority)</label>
+              <input id="rPriority" type="number" value="10" min="1" />
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label>Comment (optional)</label>
+            <input id="rComment" type="text" placeholder="e.g. Block telnet" />
+          </div>
+          <button class="btn btn-success" onclick="addRule()">➕ Add Rule</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span>💡</span> Quick Rules</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-ghost" style="font-size:12px" onclick="addQuickRule('DENY','23','TCP','Block Telnet')">🚫 Block Telnet (port 23)</button>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="addQuickRule('ALLOW','22','TCP','Allow SSH')">✅ Allow SSH (port 22)</button>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="addQuickRule('ALLOW','443','TCP','Allow HTTPS')">✅ Allow HTTPS (port 443)</button>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="addQuickRule('DENY','3389','TCP','Block RDP')">🚫 Block RDP (port 3389)</button>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="addQuickRule('DENY','*','*','Deny all by default')">🛑 Default Deny All</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title"><span>📜</span> Active Rules <span id="ruleCount" style="color:var(--accent);margin-left:auto;font-size:14px">0 rules</span></div>
+          <div id="ruleList">
+            <div class="empty-state">No rules yet. Add rules to start filtering traffic.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: SIMULATE TRAFFIC                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="tab-simulate" class="tab-pane">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div class="card-title"><span>🧪</span> Simulate a Packet</div>
+          <div style="margin-bottom:10px">
+            <label>Source IP Address</label>
+            <input id="simSrcIp" type="text" placeholder="e.g. 192.168.1.50" value="192.168.1.50" />
+          </div>
+          <div class="form-row" style="margin-bottom:10px">
+            <div>
+              <label>Destination Port</label>
+              <input id="simPort" type="number" placeholder="e.g. 80" value="80" />
+            </div>
+            <div>
+              <label>Protocol</label>
+              <select id="simProto">
+                <option value="TCP">TCP</option>
+                <option value="UDP">UDP</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="runSimulation()">▶ Run Simulation</button>
+        </div>
+
+        <div class="card" id="simResultCard" style="display:none">
+          <div class="card-title"><span>📬</span> Simulation Result</div>
+          <div id="simFinalResult" style="font-size:28px;font-weight:700;text-align:center;padding:18px 0"></div>
+          <div id="simDetails" style="font-size:12px;color:var(--text-dim);text-align:center"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-title"><span>🔗</span> Rule Evaluation Trace</div>
+          <div id="traceOutput">
+            <div class="empty-state">Trace will appear here after simulation.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TAB 4: NETWORK DIAGRAM                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="tab-diagram" class="tab-pane">
+    <div class="card">
+      <div class="card-title"><span>📊</span> Traffic Flow Diagram</div>
+      <div class="info-box">This diagram shows the logical flow of network traffic through the firewall rule engine. Run a simulation first to see live packet routing.</div>
+      <canvas id="trafficCanvas" width="900" height="420"></canvas>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span>🖧</span> Port & Service Reference</div>
+        <table class="scan-table">
+          <tr><th>Port</th><th>Service</th><th>Risk</th></tr>
+          <tr><td>21</td><td>FTP</td><td style="color:var(--yellow)">Medium</td></tr>
+          <tr><td>22</td><td>SSH</td><td style="color:var(--green)">Low (if secured)</td></tr>
+          <tr><td>23</td><td>Telnet</td><td style="color:var(--red)">Critical (plaintext)</td></tr>
+          <tr><td>80</td><td>HTTP</td><td style="color:var(--yellow)">Medium</td></tr>
+          <tr><td>443</td><td>HTTPS</td><td style="color:var(--green)">Low</td></tr>
+          <tr><td>3389</td><td>RDP</td><td style="color:var(--red)">High (brute-force target)</td></tr>
+          <tr><td>3306</td><td>MySQL</td><td style="color:var(--red)">High (if exposed)</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>📈</span> Scan Summary Chart</div>
+        <canvas id="summaryChart" width="400" height="220"></canvas>
+        <div id="chartEmpty" class="empty-state" style="padding:16px;font-size:12px">Run a scan to populate chart.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Tab Management ─────────────────────────────────────────────────────────
+function showTab(name, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'diagram') drawDiagram();
+}
+
+// ── Scanner ────────────────────────────────────────────────────────────────
+async function startScan(useSocket) {
+  const target = document.getElementById('scanTarget').value.trim();
+  const scanType = document.getElementById('scanType').value;
+  const portRange = document.getElementById('portRange').value.trim();
+
+  if (!target) { alert('Please enter a target IP or hostname.'); return; }
+
+  const btn = document.getElementById('scanBtn');
+  const spinner = document.getElementById('scanSpinner');
+  btn.disabled = true; spinner.style.display = 'inline-block';
+  document.getElementById('scanResultsWrap').innerHTML = `<div class="empty-state">⏳ Scanning ${target}... this may take a moment.</div>`;
+
+  try {
+    const endpoint = useSocket ? '/api/scan/socket' : '/api/scan';
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ target, scan_type: scanType, port_range: portRange })
+    });
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('scanResultsWrap').innerHTML = `<div class="empty-state" style="color:var(--red)">⚠️ ${data.error}</div>`;
+    } else {
+      renderScanResults(data);
+    }
+  } catch(e) {
+    document.getElementById('scanResultsWrap').innerHTML = `<div class="empty-state" style="color:var(--red)">⚠️ Connection error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; spinner.style.display = 'none';
+  }
+}
+
+function renderScanResults(data) {
+  const denied = data.results.filter(r => r.firewall_action === 'DENY').length;
+  document.getElementById('statsRow').style.display = '';
+  document.getElementById('statTarget').textContent = data.target;
+  document.getElementById('statOpen').textContent = data.total_open;
+  document.getElementById('statDenied').textContent = denied;
+  document.getElementById('statTime').textContent = data.scan_time.split(' ')[1];
+
+  if (!data.results.length) {
+    document.getElementById('scanResultsWrap').innerHTML = `<div class="empty-state">No open ports found in the scanned range.</div>`;
+    return;
+  }
+
+  let rows = data.results.map(r => `
+    <tr>
+      <td>${r.ip}</td>
+      <td><strong>${r.port}</strong></td>
+      <td><span class="badge badge-${r.protocol.toLowerCase()}">${r.protocol}</span></td>
+      <td><span class="badge badge-open">${r.state}</span></td>
+      <td>${r.service}</td>
+      <td>${r.version}</td>
+      <td><span class="badge ${r.firewall_action === 'ALLOW' ? 'badge-allow' : 'badge-deny'}">${r.firewall_action}</span></td>
+    </tr>`).join('');
+
+  document.getElementById('scanResultsWrap').innerHTML = `
+    <div class="table-wrap">
+      <table class="scan-table">
+        <thead><tr><th>IP</th><th>Port</th><th>Protocol</th><th>State</th><th>Service</th><th>Version</th><th>Firewall</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  // store for chart
+  window._lastScanData = data;
+  drawSummaryChart(data);
+}
+
+// ── Firewall Rules ─────────────────────────────────────────────────────────
+async function addRule() {
+  const rule = {
+    action:   document.getElementById('rAction').value,
+    src_ip:   document.getElementById('rSrcIp').value.trim(),
+    dst_port: document.getElementById('rDstPort').value.trim(),
+    protocol: document.getElementById('rProto').value,
+    priority: document.getElementById('rPriority').value,
+    comment:  document.getElementById('rComment').value.trim()
+  };
+  const res = await fetch('/api/firewall/rules', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(rule)
+  });
+  const data = await res.json();
+  if (data.success) { await loadRules(); document.getElementById('rComment').value = ''; }
+}
+
+async function addQuickRule(action, port, proto, comment) {
+  await fetch('/api/firewall/rules', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action, src_ip: '*', dst_port: port, protocol: proto, priority: 10, comment })
+  });
+  await loadRules();
+}
+
+async function deleteRule(id) {
+  await fetch('/api/firewall/rules/'+id, { method: 'DELETE' });
+  await loadRules();
+}
+
+async function loadRules() {
+  const res = await fetch('/api/firewall/rules');
+  const rules = await res.json();
+  document.getElementById('ruleCount').textContent = rules.length + ' rules';
+  if (!rules.length) {
+    document.getElementById('ruleList').innerHTML = `<div class="empty-state">No rules configured.</div>`;
+    return;
+  }
+  document.getElementById('ruleList').innerHTML = `<div class="rule-list">${
+    rules.map(r => `
+      <div class="rule-item">
+        <span class="priority">#${r.priority}</span>
+        <span class="rule-action-${r.action.toLowerCase()}">${r.action}</span>
+        <span style="color:var(--text-dim)">${r.protocol}</span>
+        <span>from <strong>${r.src_ip}</strong> → port <strong>${r.dst_port}</strong></span>
+        ${r.comment ? `<span style="color:var(--text-dim);font-size:11px">(${r.comment})</span>` : ''}
+        <button class="del-btn" onclick="deleteRule(${r.id})">✕</button>
+      </div>`).join('')
+  }</div>`;
+}
+
+// ── Traffic Simulation ─────────────────────────────────────────────────────
+async function runSimulation() {
+  const body = {
+    src_ip:   document.getElementById('simSrcIp').value.trim(),
+    dst_port: document.getElementById('simPort').value.trim(),
+    protocol: document.getElementById('simProto').value
+  };
+  const res = await fetch('/api/firewall/simulate', {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) { alert(data.error); return; }
+
+  const isAllow = data.final_action === 'ALLOW';
+  document.getElementById('simResultCard').style.display = '';
+  document.getElementById('simFinalResult').innerHTML =
+    `<span style="color:${isAllow ? 'var(--green)' : 'var(--red)'}">${isAllow ? '✅ ALLOWED' : '🚫 DENIED'}</span>`;
+  document.getElementById('simDetails').textContent =
+    `${data.src_ip}:${data.dst_port} (${data.protocol}) → Firewall verdict: ${data.final_action}`;
+
+  const traceEl = document.getElementById('traceOutput');
+  if (!data.trace.length) {
+    traceEl.innerHTML = '<div class="trace-item no-match">No firewall rules configured — traffic allowed by default.</div>';
+    return;
+  }
+  traceEl.innerHTML = data.trace.map(t => `
+    <div class="trace-item ${t.matched ? 'matched-'+t.action.toLowerCase() : 'no-match'}">
+      <span>Rule #${t.rule_id}</span>
+      <span style="color:${t.action === 'ALLOW' ? 'var(--green)' : 'var(--red)'}">${t.action}</span>
+      <span>${t.reason}</span>
+      ${t.matched ? `<span style="margin-left:auto;font-weight:700;color:${t.action === 'ALLOW' ? 'var(--green)' : 'var(--red)'}">◀ MATCH</span>` : ''}
+    </div>`).join('');
+
+  window._lastSim = data;
+  drawDiagram(data);
+}
+
+// ── Canvas: Traffic Diagram ────────────────────────────────────────────────
+function drawDiagram(simData) {
+  const canvas = document.getElementById('trafficCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#0a0e1a';
+  ctx.fillRect(0, 0, W, H);
+
+  const nodes = [
+    { x: 100, y: H/2, label: '🖥️', sub: 'Source', ip: simData?.src_ip || '?' },
+    { x: W/2,  y: H/2, label: '🔥', sub: 'Firewall', ip: 'Rule Engine' },
+    { x: W-100,y: H/2, label: '🌐', sub: 'Destination', ip: `Port ${simData?.dst_port || '?'}` }
+  ];
+
+  // Draw arrows
+  const verdict = simData ? simData.final_action : null;
+  const arrowColor1 = '#00d4ff';
+  const arrowColor2 = verdict === 'ALLOW' ? '#00ff88' : verdict === 'DENY' ? '#ff4757' : '#2a3650';
+
+  drawArrow(ctx, nodes[0].x+40, H/2, nodes[1].x-40, H/2, arrowColor1, simData ? `${simData.protocol} :${simData.dst_port}` : 'Packet');
+  drawArrow(ctx, nodes[1].x+40, H/2, nodes[2].x-40, H/2, arrowColor2, verdict || '—');
+
+  // Draw nodes
+  nodes.forEach((n, i) => {
+    ctx.fillStyle = '#111827';
+    ctx.strokeStyle = i === 1 ? '#ffa502' : '#2a3650';
+    ctx.lineWidth = 2;
+    roundRect(ctx, n.x-45, n.y-45, 90, 90, 12);
+    ctx.fill(); ctx.stroke();
+
+    ctx.font = '30px serif'; ctx.textAlign = 'center';
+    ctx.fillText(n.label, n.x, n.y+10);
+
+    ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px Segoe UI';
+    ctx.fillText(n.sub, n.x, n.y+40);
+    ctx.fillStyle = '#64748b'; ctx.font = '11px Courier New';
+    ctx.fillText(n.ip, n.x, n.y+54);
+  });
+
+  // Verdict banner
+  if (verdict) {
+    ctx.fillStyle = verdict === 'ALLOW' ? '#00ff8820' : '#ff475720';
+    roundRect(ctx, W/2-90, H-56, 180, 36, 8);
+    ctx.fill();
+    ctx.fillStyle = verdict === 'ALLOW' ? '#00ff88' : '#ff4757';
+    ctx.font = 'bold 16px Segoe UI'; ctx.textAlign = 'center';
+    ctx.fillText(verdict === 'ALLOW' ? '✅ TRAFFIC ALLOWED' : '🚫 TRAFFIC BLOCKED', W/2, H-32);
+  }
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, label) {
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2-12, y2); ctx.stroke();
+  // arrowhead
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2-14, y2-6); ctx.lineTo(x2-14, y2+6); ctx.closePath(); ctx.fill();
+  // label
+  ctx.fillStyle = '#e2e8f0'; ctx.font = '11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText(label, (x1+x2)/2, y1-12);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+// ── Summary Chart ─────────────────────────────────────────────────────────
+function drawSummaryChart(data) {
+  const canvas = document.getElementById('summaryChart');
+  document.getElementById('chartEmpty').style.display = 'none';
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0,0,W,H);
+
+  // Count services
+  const svcCount = {};
+  data.results.forEach(r => { svcCount[r.service] = (svcCount[r.service]||0)+1; });
+  const entries = Object.entries(svcCount).sort((a,b) => b[1]-a[1]).slice(0,6);
+  if (!entries.length) return;
+
+  const max = Math.max(...entries.map(e=>e[1]));
+  const barH = 26, gap = 10, startY = 20, startX = 90;
+  const colors = ['#00d4ff','#00ff88','#ffa502','#a855f7','#ff4757','#38bdf8'];
+
+  entries.forEach(([svc, cnt], i) => {
+    const y = startY + i*(barH+gap);
+    const bw = ((cnt/max) * (W - startX - 50));
+    ctx.fillStyle = colors[i % colors.length] + '33';
+    ctx.fillRect(startX, y, bw, barH);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillRect(startX, y, 4, barH);
+    ctx.fillStyle = '#e2e8f0'; ctx.font = '12px Segoe UI'; ctx.textAlign = 'right';
+    ctx.fillText(svc, startX-8, y+barH-8);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#64748b';
+    ctx.fillText(cnt + ' port'+(cnt>1?'s':''), startX + bw + 8, y+barH-8);
+  });
+
+  ctx.fillStyle = '#64748b'; ctx.font = '11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('Open ports by service', W/2, H-4);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadRules();
+drawDiagram();
+</script>
+</body>
+</html>
